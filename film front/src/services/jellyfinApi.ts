@@ -34,6 +34,7 @@ type JellyfinItem = {
   RunTimeTicks?: number;
   Genres?: string[];
   CommunityRating?: number;
+  SeriesName?: string;
   ParentIndexNumber?: number;
   IndexNumber?: number;
   ChildCount?: number;
@@ -390,16 +391,36 @@ export const jellyfinApi = {
     const serverUrl = getServerUrl();
     const hlsUrl = `${serverUrl}/Videos/${itemId}/master.m3u8?api_key=${encodeURIComponent(token)}`;
     const directUrl = `${serverUrl}/Videos/${itemId}/stream?static=true&api_key=${encodeURIComponent(token)}`;
+    const episodes = item.Type === 'Episode' && item.SeriesId
+      ? (await jellyfinRequest<JellyfinItemsResponse>(`/Shows/${item.SeriesId}/Episodes?UserId=${getUserId()}${item.SeasonId ? `&SeasonId=${item.SeasonId}` : ''}&Fields=PrimaryImageAspectRatio,Overview,UserData,RunTimeTicks`).catch(() => ({ Items: [], TotalRecordCount: 0 }))).Items
+      : [];
+    const currentIndex = episodes.findIndex((episode) => episode.Id === itemId);
+    const nextEpisode = currentIndex >= 0 ? episodes[currentIndex + 1] : undefined;
+    const displayTitle = item.Type === 'Episode'
+      ? `S${item.ParentIndexNumber ?? 1}:E${item.IndexNumber ?? 1} "${item.Name}"`
+      : item.Name;
 
     return {
       playableItemId: itemId,
       title: item.Name,
+      displayTitle,
+      seriesTitle: item.SeriesName,
       hlsUrl,
       directUrl,
       durationSeconds: ticksToSeconds(item.RunTimeTicks),
       qualities: ['Auto'],
       audioTracks: ['Padrao'],
-      subtitleTracks: ['Desligada']
+      subtitleTracks: ['Desligada'],
+      episodes: episodes.map((episode) => ({
+        id: episode.Id,
+        title: episode.Name,
+        seasonNumber: episode.ParentIndexNumber,
+        episodeNumber: episode.IndexNumber,
+        durationMinutes: Math.round(ticksToSeconds(episode.RunTimeTicks) / 60),
+        progress: progress(episode),
+        isPlayed: episode.UserData?.Played
+      })),
+      nextEpisodeId: nextEpisode?.Id
     };
   },
 

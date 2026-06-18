@@ -1,25 +1,24 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { Captions, FastForward, Maximize, MoreVertical, Pause, Play, Rewind, RotateCcw, Volume2, VolumeX, X } from 'lucide-react';
+import { Cast, ChevronLeft, ListVideo, MessageSquareText, Pause, Play, RotateCcw, SkipForward } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { PlaybackInfo } from '../../types/playback';
 import { AudioMenu } from './AudioMenu';
-import { QualityMenu } from './QualityMenu';
 import { SubtitleMenu } from './SubtitleMenu';
 
 export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTMLVideoElement | null }) {
   const navigate = useNavigate();
   const [paused, setPaused] = useState(true);
-  const [muted, setMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(info.durationSeconds || 0);
+  const [episodePanelOpen, setEpisodePanelOpen] = useState(false);
+  const [audioPanelOpen, setAudioPanelOpen] = useState(false);
 
   useEffect(() => {
     if (!video) return;
 
     const sync = () => {
       setPaused(video.paused);
-      setMuted(video.muted || video.volume === 0);
       setCurrentTime(video.currentTime || 0);
       setDuration(video.duration || info.durationSeconds || 0);
     };
@@ -29,14 +28,12 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
     video.addEventListener('pause', sync);
     video.addEventListener('timeupdate', sync);
     video.addEventListener('durationchange', sync);
-    video.addEventListener('volumechange', sync);
 
     return () => {
       video.removeEventListener('play', sync);
       video.removeEventListener('pause', sync);
       video.removeEventListener('timeupdate', sync);
       video.removeEventListener('durationchange', sync);
-      video.removeEventListener('volumechange', sync);
     };
   }, [info.durationSeconds, video]);
 
@@ -57,20 +54,6 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
     setCurrentTime(Number(value));
   };
 
-  const toggleMute = () => {
-    if (!video) return;
-    video.muted = !video.muted;
-  };
-
-  const toggleFullscreen = () => {
-    const target = document.querySelector('.watch-screen') as HTMLElement | null;
-    if (!document.fullscreenElement) {
-      void target?.requestFullscreen();
-      return;
-    }
-    void document.exitFullscreen();
-  };
-
   const formatTime = (value: number) => {
     const total = Math.max(0, Math.floor(value || 0));
     const hours = Math.floor(total / 3600);
@@ -85,21 +68,37 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
     '--progress': `${duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0}%`
   } as CSSProperties;
 
+  const episodes = info.episodes ?? [];
+  const isSeries = episodes.length > 0;
+
   return (
-    <div className="player-controls">
-      <div className="player-top-bar">
-        <button className="player-icon-button" aria-label="Sair" title="Sair" onClick={() => navigate(-1)} tabIndex={0}>
-          <X size={32} />
+    <div className="player-controls player-compact">
+      <div className="player-mobile-top">
+        <button className="player-plain-button" aria-label="Voltar" title="Voltar" onClick={() => navigate(-1)} tabIndex={0}>
+          <ChevronLeft size={42} />
+        </button>
+        <strong>{info.displayTitle ?? info.title}</strong>
+        <button className="player-plain-button" aria-label="Transmitir" title="Transmitir" tabIndex={0}>
+          <Cast size={36} />
         </button>
       </div>
 
-      <div className="player-title-block">
-        <strong>{info.title}</strong>
-        <span>Zippy Player</span>
+      <div className="player-center-controls">
+        <button className="skip-ten-button" aria-label="Voltar 10 segundos" title="Voltar 10 segundos" onClick={() => seek(-10)} tabIndex={0}>
+          <RotateCcw size={42} />
+          <span>10</span>
+        </button>
+        <button className="giant-play-button" aria-label={paused ? 'Reproduzir' : 'Pausar'} title={paused ? 'Reproduzir' : 'Pausar'} onClick={toggle} tabIndex={0}>
+          {paused ? <Play size={84} fill="currentColor" /> : <Pause size={84} fill="currentColor" />}
+        </button>
+        <button className="skip-ten-button forward" aria-label="Avancar 10 segundos" title="Avancar 10 segundos" onClick={() => seek(10)} tabIndex={0}>
+          <RotateCcw size={42} />
+          <span>10</span>
+        </button>
       </div>
 
-      <div className="player-bottom-panel">
-        <div className="player-timeline">
+      <div className="player-mobile-bottom">
+        <div className="mobile-progress-row">
           <input
             aria-label="Progresso"
             type="range"
@@ -110,49 +109,55 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
             onChange={(event) => setProgress(event.target.value)}
             tabIndex={0}
           />
-          <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
         </div>
 
-        <div className="player-command-row">
-          <div className="player-left-actions">
-            <button className="player-icon-button" aria-label="Voltar 10 segundos" title="Voltar 10 segundos" onClick={() => seek(-10)} tabIndex={0}>
-              <RotateCcw size={32} />
-            </button>
-            <button className="player-main-button" aria-label={paused ? 'Reproduzir' : 'Pausar'} title={paused ? 'Reproduzir' : 'Pausar'} onClick={toggle} tabIndex={0}>
-              {paused ? <Play size={42} fill="currentColor" /> : <Pause size={42} fill="currentColor" />}
-            </button>
-            <button className="player-icon-button" aria-label="Avancar 10 segundos" title="Avancar 10 segundos" onClick={() => seek(10)} tabIndex={0}>
-              <RotateCcw className="mirror-icon" size={32} />
-            </button>
-            <button className="player-icon-button" aria-label="Retroceder" title="Retroceder" onClick={() => seek(-30)} tabIndex={0}>
-              <Rewind size={30} />
-            </button>
-            <button className="player-icon-button" aria-label="Avancar" title="Avancar" onClick={() => seek(30)} tabIndex={0}>
-              <FastForward size={30} />
-            </button>
-          </div>
-
-          <div className="player-center-meta">
-            <span>{info.title}</span>
-          </div>
-
-          <div className="player-right-actions">
-            <button className="player-icon-button" aria-label="Volume" title="Volume" onClick={toggleMute} tabIndex={0}>
-              {muted ? <VolumeX size={30} /> : <Volume2 size={30} />}
-            </button>
-            <div className="player-select-wrap"><QualityMenu qualities={info.qualities} /></div>
-            <div className="player-select-wrap"><AudioMenu tracks={info.audioTracks} /></div>
-            <div className="player-select-wrap subtitle-select"><Captions size={24} /><SubtitleMenu tracks={info.subtitleTracks.length ? info.subtitleTracks : ['Desligada']} /></div>
-            <button className="player-icon-button" aria-label="Tela cheia" title="Tela cheia" onClick={toggleFullscreen} tabIndex={0}>
-              <Maximize size={30} />
-            </button>
-            <button className="player-icon-button" aria-label="Mais opcoes" title="Mais opcoes" tabIndex={0}>
-              <MoreVertical size={30} />
-            </button>
-          </div>
+        <div className="mobile-action-row">
+          <button disabled={!isSeries} onClick={() => setEpisodePanelOpen(true)} tabIndex={0}>
+            <ListVideo size={34} />
+            <span>Episodes</span>
+          </button>
+          <button onClick={() => setAudioPanelOpen((open) => !open)} tabIndex={0}>
+            <MessageSquareText size={34} />
+            <span>Audio & Subtitles</span>
+          </button>
+          <button disabled={!info.nextEpisodeId} onClick={() => info.nextEpisodeId && navigate(`/watch/${info.nextEpisodeId}`)} tabIndex={0}>
+            <SkipForward size={34} fill="currentColor" />
+            <span>Next episode</span>
+          </button>
         </div>
       </div>
+
+      {audioPanelOpen && (
+        <div className="audio-subtitle-popover">
+          <label>Audio<AudioMenu tracks={info.audioTracks} /></label>
+          <label>Legenda<SubtitleMenu tracks={info.subtitleTracks.length ? info.subtitleTracks : ['Desligada']} /></label>
+        </div>
+      )}
+
+      {episodePanelOpen && (
+        <div className="episode-drawer">
+          <div className="episode-drawer-header">
+            <strong>{info.seriesTitle ?? 'Episodes'}</strong>
+            <button className="player-plain-button" onClick={() => setEpisodePanelOpen(false)} tabIndex={0}>Fechar</button>
+          </div>
+          <div className="episode-drawer-list">
+            {episodes.map((episode) => (
+              <button
+                key={episode.id}
+                className={episode.id === info.playableItemId ? 'active' : ''}
+                onClick={() => navigate(`/watch/${episode.id}`)}
+                tabIndex={0}
+              >
+                <span>S{episode.seasonNumber ?? 1}:E{episode.episodeNumber ?? 1}</span>
+                <strong>{episode.title}</strong>
+                <small>{episode.durationMinutes ? `${episode.durationMinutes} min` : ''}{episode.isPlayed ? ' • assistido' : ''}</small>
+                {typeof episode.progress === 'number' && <i style={{ width: `${episode.progress}%` }} />}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

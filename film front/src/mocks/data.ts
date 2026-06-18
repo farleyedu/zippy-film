@@ -100,9 +100,21 @@ export const mockHome: HomeResponse = {
 export const mockPlayback = (playableItemId: string): PlaybackInfo => ({
   playableItemId,
   title: mockMedia.find((item) => item.playableItemId === playableItemId)?.title ?? 'Zippy Player',
+  displayTitle: playableItemId.startsWith('ep') ? 'S1:E2 "Linha de Fogo"' : undefined,
+  seriesTitle: playableItemId.startsWith('ep') ? 'Horizonte 12' : undefined,
   hlsUrl: '/media-stream/' + playableItemId + '/master.m3u8',
   durationSeconds: 7200,
   qualities: ['Auto', '480p', '720p', '1080p', '4K'],
   audioTracks: ['pt-BR', 'en-US'],
-  subtitleTracks: ['Desligada', 'pt-BR']
+  subtitleTracks: ['Desligada', 'pt-BR'],
+  episodes: mockMedia.find((item) => item.id === 's1')?.seasons?.[0].episodes.map((episode) => ({
+    id: episode.playableItemId,
+    title: episode.title,
+    seasonNumber: 1,
+    episodeNumber: episode.episodeNumber,
+    durationMinutes: episode.durationMinutes,
+    progress: episode.progress,
+    isPlayed: episode.isPlayed
+  })),
+  nextEpisodeId: 'ep3'
 });
