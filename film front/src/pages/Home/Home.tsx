@@ -19,7 +19,7 @@ export function Home() {
     <AppShell>
       <HeroBanner media={home.hero} />
       <div className="rows-stack">
-        {home.rows.map((row) => <ContentRow key={row.title} title={row.title} items={row.items} />)}
+        {home.rows.map((row) => <ContentRow key={row.title} title={row.title} items={row.items} wide={row.title === 'Continuar assistindo'} />)}
       </div>
     </AppShell>
   );

@@ -152,7 +152,7 @@ function mapMedia(item: JellyfinItem): Media {
     voteAverage: item.CommunityRating,
     genre: item.Genres?.[0],
     progress: progress(item),
-    playableItemId: item.Type === 'Movie' ? item.Id : undefined,
+    playableItemId: item.Type === 'Series' ? undefined : item.Id,
     isFavorite: item.UserData?.IsFavorite,
     runtimeSeconds: ticksToSeconds(item.RunTimeTicks),
     officialRating: item.OfficialRating,
@@ -289,23 +289,35 @@ export const jellyfinApi = {
       getResumeItems().catch(() => []),
       this.movies({ limit: 24, sortBy: 'DateCreated', sortOrder: 'Descending' }).catch(() => []),
       this.series({ limit: 24, sortBy: 'DateCreated', sortOrder: 'Descending' }).catch(() => []),
-      this.movies({ limit: 30 }).catch(() => []),
-      this.series({ limit: 30 }).catch(() => []),
+      this.movies({ limit: 80 }).catch(() => []),
+      this.series({ limit: 80 }).catch(() => []),
       this.favorites().catch(() => [])
     ]);
     const featured = [...resume, ...recentMovies, ...recentSeries, ...movies, ...series];
+    const genreNames = Array.from(new Set([...movies, ...series].map((item) => item.genre).filter(Boolean))).slice(0, 8);
+    const genreRows = genreNames.map((genre) => ({
+      title: `${genre}`,
+      items: [...movies, ...series].filter((item) => item.genre === genre).slice(0, 24)
+    })).filter((row) => row.items.length >= 2);
+    const topRated = [...movies, ...series]
+      .filter((item) => typeof item.voteAverage === 'number')
+      .sort((a, b) => (b.voteAverage ?? 0) - (a.voteAverage ?? 0))
+      .slice(0, 24);
 
     return {
       hero: featured[0] ?? null,
       rows: [
         { title: 'Continuar assistindo', items: resume },
+        { title: 'Minha lista', items: favorites },
+        { title: 'Adicionados recentemente', items: [...recentMovies, ...recentSeries].slice(0, 30) },
         { title: 'Filmes adicionados recentemente', items: recentMovies },
         { title: 'Series adicionadas recentemente', items: recentSeries },
-        { title: 'Filmes', items: movies },
-        { title: 'Series', items: series },
-        { title: 'Favoritos', items: favorites },
-        { title: 'Em destaque', items: featured.slice(0, 30) }
-      ]
+        { title: 'Em destaque', items: featured.slice(0, 30) },
+        { title: 'Mais bem avaliados', items: topRated },
+        { title: 'Filmes', items: movies.slice(0, 30) },
+        { title: 'Series', items: series.slice(0, 30) },
+        ...genreRows
+      ].filter((row) => row.items.length > 0)
     };
   },
 
@@ -371,6 +383,10 @@ export const jellyfinApi = {
       Limit: 60,
       Fields: 'PrimaryImageAspectRatio,Overview,Genres,UserData,RunTimeTicks,ProductionYear,CommunityRating,OfficialRating'
     });
+  },
+
+  continueWatching() {
+    return getResumeItems();
   },
 
   watched() {

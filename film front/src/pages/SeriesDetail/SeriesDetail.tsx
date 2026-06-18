@@ -28,7 +28,7 @@ export function SeriesDetail() {
           <div className="hero-actions">
             <button onClick={() => navigate(`/watch/${media.playableItemId ?? media.id}`)} tabIndex={0}><Play />Continuar episodio atual</button>
             <button className="secondary" tabIndex={0}><RotateCcw />Recomecar serie</button>
-            <button className="secondary" tabIndex={0}>Minha lista</button>
+            <button className="secondary" onClick={() => api.addList(localStorage.getItem('zippy.profileId') ?? '', media.id, 'FAVORITE')} tabIndex={0}>Minha lista</button>
           </div>
         </div>
       </section>

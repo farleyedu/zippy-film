@@ -1438,6 +1438,35 @@ select {
   min-height: 154px;
 }
 
+.empty-feature-state {
+  width: min(720px, 100%);
+  min-height: 260px;
+  margin-top: 34px;
+  padding: 34px;
+  display: grid;
+  align-content: center;
+  gap: 14px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(229,9,20,.16), rgba(255,255,255,.04) 38%, rgba(255,255,255,.02)),
+    rgba(12,12,12,.78);
+  box-shadow: 0 28px 76px rgba(0,0,0,.48), 0 0 0 1px rgba(255,255,255,.04) inset;
+  backdrop-filter: blur(16px);
+}
+
+.empty-feature-state strong {
+  font-size: 28px;
+}
+
+.empty-feature-state p {
+  max-width: 560px;
+  margin: 0;
+  color: rgba(255,255,255,.68);
+  font-size: 18px;
+  line-height: 1.45;
+}
+
 .watch-screen {
   background:
     linear-gradient(90deg, #000 0 8%, transparent 18% 82%, #000 92% 100%),
@@ -1547,6 +1576,42 @@ select {
   border-radius: 50%;
   background: #ffffff;
   box-shadow: 0 10px 24px rgba(0,0,0,.52), 0 0 0 7px rgba(229,9,20,.2);
+}
+
+.mobile-volume-control {
+  display: none;
+}
+
+.vertical-volume-slider {
+  touch-action: none;
+}
+
+.vertical-volume-track {
+  position: relative;
+  width: 12px;
+  height: 164px;
+  border-radius: 999px;
+  background:
+    linear-gradient(0deg, #e50914, #f73a42) 0 100% / 100% var(--volume, 100%) no-repeat,
+    rgba(255,255,255,.22);
+  box-shadow: 0 10px 28px rgba(0,0,0,.46) inset;
+  cursor: ns-resize;
+}
+
+.vertical-volume-track span {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--volume, 100%) - 13px);
+  width: 28px;
+  height: 28px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 10px 26px rgba(0,0,0,.62), 0 0 0 7px rgba(229,9,20,.2);
+}
+
+.vertical-volume-track:focus-visible {
+  box-shadow: 0 0 0 3px rgba(255,255,255,.9), 0 0 0 7px rgba(229,9,20,.5);
 }
 
 .player-plain-button {
@@ -1685,6 +1750,12 @@ select {
 }
 
 @media (pointer: coarse) {
+  .mobile-volume-control {
+    display: grid;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
   .mobile-volume-control {
     display: grid;
   }

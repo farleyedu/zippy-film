@@ -3,7 +3,7 @@ import type { Media } from '../../types/media';
 
 export function MediaCard({ media, wide = false }: { media: Media; wide?: boolean }) {
   const navigate = useNavigate();
-  const path = media.type === 'MOVIE' ? `/movie/${media.id}` : `/series/${media.id}`;
+  const path = wide && media.playableItemId ? `/watch/${media.playableItemId}` : media.type === 'MOVIE' ? `/movie/${media.id}` : `/series/${media.id}`;
 
   return (
     <button className={`media-card ${wide ? 'wide-card' : ''}`} onClick={() => navigate(path)} tabIndex={0}>

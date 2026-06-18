@@ -15,12 +15,19 @@ export function History() {
     <AppShell>
       <section className="catalog-page">
         <h1>Historico</h1>
-        {['Assistidos', 'Com progresso', 'Recentes'].map((group, index) => (
-          <section className="content-row" key={group}>
-            <h2>{group}</h2>
-            <div className="row-scroller">{items.slice(index * 12, index * 12 + 12).map((item) => <MediaCard key={`${group}-${item.id}`} media={item} />)}</div>
-          </section>
-        ))}
+        {items.length ? (
+          ['Assistidos', 'Com progresso', 'Recentes'].map((group, index) => (
+            <section className="content-row" key={group}>
+              <h2>{group}</h2>
+              <div className="row-scroller">{items.slice(index * 12, index * 12 + 12).map((item) => <MediaCard key={`${group}-${item.id}`} media={item} />)}</div>
+            </section>
+          ))
+        ) : (
+          <div className="empty-feature-state">
+            <strong>Historico vazio</strong>
+            <p>Os itens assistidos e com progresso do Jellyfin aparecem aqui conforme voce usa o player.</p>
+          </div>
+        )}
       </section>
     </AppShell>
   );

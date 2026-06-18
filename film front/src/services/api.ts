@@ -83,8 +83,7 @@ export const api = {
 
   continueWatching: async (): Promise<Media[]> => {
     if (useMocks()) return mockMedia.filter((item) => item.progress);
-    const home = await jellyfinApi.home();
-    return home.rows.find((row) => row.title === 'Continuar assistindo')?.items ?? [];
+    return jellyfinApi.continueWatching();
   },
 
   history: async (): Promise<Media[]> => {

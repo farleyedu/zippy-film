@@ -15,7 +15,14 @@ export function MyList() {
     <AppShell>
       <section className="catalog-page">
         <h1>Minha lista</h1>
-        <ContentRow title="Favoritos do Jellyfin" items={items} />
+        {items.length ? (
+          <ContentRow title="Favoritos do Jellyfin" items={items} />
+        ) : (
+          <div className="empty-feature-state">
+            <strong>Sua lista ainda esta vazia</strong>
+            <p>Marque filmes e series como favoritos no Zippy ou no Jellyfin para eles aparecerem aqui.</p>
+          </div>
+        )}
       </section>
     </AppShell>
   );

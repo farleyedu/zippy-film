@@ -23,8 +23,6 @@ export function MovieDetail() {
           <h1>{media.title}</h1>
           <p>{media.year} • {media.officialRating ?? 'Livre'} • {Math.round((media.runtimeSeconds ?? 0) / 60) || '--'} min • {media.genre ?? 'Video'} • Jellyfin</p>
           <p className="detail-overview">{media.overview}</p>
-          <p>Elenco: Farley Silva, Marina Costa, Rafael Nunes</p>
-          <p>Direcao: Zippy Studios</p>
           <div className="hero-actions">
             <button onClick={() => navigate(`/watch/${media.playableItemId ?? media.id}`)} tabIndex={0}><Play />Assistir</button>
             <button className="secondary" tabIndex={0}><RotateCcw />Recomecar</button>

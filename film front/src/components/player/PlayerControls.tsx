@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, PointerEvent } from 'react';
 import { Cast, ChevronLeft, ListVideo, MessageSquareText, Pause, Play, RotateCcw, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { PlaybackInfo } from '../../types/playback';
@@ -16,6 +16,7 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
   const [episodePanelOpen, setEpisodePanelOpen] = useState(false);
   const [audioPanelOpen, setAudioPanelOpen] = useState(false);
   const [volumeOpen, setVolumeOpen] = useState(false);
+  const [volumeDragging, setVolumeDragging] = useState(false);
 
   useEffect(() => {
     if (!video) return;
@@ -70,6 +71,29 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
     setMuted(nextVolume === 0);
   };
 
+  const updateVolumeFromPointer = (clientY: number, element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    const next = 1 - ((clientY - rect.top) / rect.height);
+    setVideoVolume(next);
+  };
+
+  const handleVolumePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setVolumeDragging(true);
+    setVolumeOpen(true);
+    updateVolumeFromPointer(event.clientY, event.currentTarget);
+  };
+
+  const handleVolumePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!volumeDragging) return;
+    updateVolumeFromPointer(event.clientY, event.currentTarget);
+  };
+
+  const handleVolumePointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    setVolumeDragging(false);
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
   const formatTime = (value: number) => {
     const total = Math.max(0, Math.floor(value || 0));
     const hours = Math.floor(total / 3600);
@@ -113,18 +137,25 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
         >
           {muted ? <VolumeX size={34} /> : <Volume2 size={34} />}
         </button>
-        <div className={`vertical-volume-slider ${volumeOpen ? 'open' : ''}`}>
-          <input
+        <div className={`vertical-volume-slider ${volumeOpen ? 'open' : ''}`} style={volumeStyle}>
+          <div
+            className="vertical-volume-track"
+            role="slider"
             aria-label="Volume"
-            type="range"
-            min="0"
-            max="100"
-            value={Math.round((muted ? 0 : volume) * 100)}
-            style={volumeStyle}
-            onChange={(event) => setVideoVolume(Number(event.target.value) / 100)}
-            onPointerDown={() => setVolumeOpen(true)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round((muted ? 0 : volume) * 100)}
             tabIndex={volumeOpen ? 0 : -1}
-          />
+            onPointerDown={handleVolumePointerDown}
+            onPointerMove={handleVolumePointerMove}
+            onPointerUp={handleVolumePointerUp}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowUp') setVideoVolume(volume + 0.05);
+              if (event.key === 'ArrowDown') setVideoVolume(volume - 0.05);
+            }}
+          >
+            <span />
+          </div>
         </div>
       </div>
 
