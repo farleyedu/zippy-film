@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { Cast, ChevronLeft, ListVideo, MessageSquareText, Pause, Play, RotateCcw, SkipForward } from 'lucide-react';
+import { Cast, ChevronLeft, ListVideo, MessageSquareText, Pause, Play, RotateCcw, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { PlaybackInfo } from '../../types/playback';
 import { AudioMenu } from './AudioMenu';
@@ -11,8 +11,11 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
   const [paused, setPaused] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(info.durationSeconds || 0);
+  const [volume, setVolume] = useState(1);
+  const [muted, setMuted] = useState(false);
   const [episodePanelOpen, setEpisodePanelOpen] = useState(false);
   const [audioPanelOpen, setAudioPanelOpen] = useState(false);
+  const [volumeOpen, setVolumeOpen] = useState(false);
 
   useEffect(() => {
     if (!video) return;
@@ -21,6 +24,8 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
       setPaused(video.paused);
       setCurrentTime(video.currentTime || 0);
       setDuration(video.duration || info.durationSeconds || 0);
+      setVolume(video.muted ? 0 : video.volume);
+      setMuted(video.muted || video.volume === 0);
     };
 
     sync();
@@ -28,12 +33,14 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
     video.addEventListener('pause', sync);
     video.addEventListener('timeupdate', sync);
     video.addEventListener('durationchange', sync);
+    video.addEventListener('volumechange', sync);
 
     return () => {
       video.removeEventListener('play', sync);
       video.removeEventListener('pause', sync);
       video.removeEventListener('timeupdate', sync);
       video.removeEventListener('durationchange', sync);
+      video.removeEventListener('volumechange', sync);
     };
   }, [info.durationSeconds, video]);
 
@@ -54,6 +61,15 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
     setCurrentTime(Number(value));
   };
 
+  const setVideoVolume = (value: number) => {
+    if (!video) return;
+    const nextVolume = Math.max(0, Math.min(1, value));
+    video.volume = nextVolume;
+    video.muted = nextVolume === 0;
+    setVolume(nextVolume);
+    setMuted(nextVolume === 0);
+  };
+
   const formatTime = (value: number) => {
     const total = Math.max(0, Math.floor(value || 0));
     const hours = Math.floor(total / 3600);
@@ -66,6 +82,10 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
 
   const progressStyle = {
     '--progress': `${duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0}%`
+  } as CSSProperties;
+
+  const volumeStyle = {
+    '--volume': `${Math.round((muted ? 0 : volume) * 100)}%`
   } as CSSProperties;
 
   const episodes = info.episodes ?? [];
@@ -81,6 +101,31 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
         <button className="player-plain-button" aria-label="Transmitir" title="Transmitir" tabIndex={0}>
           <Cast size={36} />
         </button>
+      </div>
+
+      <div className="mobile-volume-control">
+        <button
+          className="player-plain-button"
+          aria-label="Volume"
+          title="Volume"
+          onClick={() => setVolumeOpen((open) => !open)}
+          tabIndex={0}
+        >
+          {muted ? <VolumeX size={34} /> : <Volume2 size={34} />}
+        </button>
+        <div className={`vertical-volume-slider ${volumeOpen ? 'open' : ''}`}>
+          <input
+            aria-label="Volume"
+            type="range"
+            min="0"
+            max="100"
+            value={Math.round((muted ? 0 : volume) * 100)}
+            style={volumeStyle}
+            onChange={(event) => setVideoVolume(Number(event.target.value) / 100)}
+            onPointerDown={() => setVolumeOpen(true)}
+            tabIndex={volumeOpen ? 0 : -1}
+          />
+        </div>
       </div>
 
       <div className="player-center-controls">
