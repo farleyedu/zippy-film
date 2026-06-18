@@ -6,7 +6,9 @@ import { PlayerControls } from './PlayerControls';
 
 export function Player({ info }: { info: PlaybackInfo }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hideTimerRef = useRef<number | null>(null);
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
+  const [controlsVisible, setControlsVisible] = useState(true);
   const profileId = localStorage.getItem('zippy.profileId') ?? 'profile-farley';
   usePlaybackProgress(info.playableItemId, profileId, video);
 
@@ -27,6 +29,7 @@ export function Player({ info }: { info: PlaybackInfo }) {
     });
 
     const handleKey = (event: KeyboardEvent) => {
+      setControlsVisible(true);
       if (event.code === 'Space') {
         event.preventDefault();
         if (element.paused) void element.play();
@@ -41,9 +44,30 @@ export function Player({ info }: { info: PlaybackInfo }) {
     };
   }, [info.directUrl, info.hlsUrl]);
 
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) {
+        window.clearTimeout(hideTimerRef.current);
+      }
+    };
+  }, []);
+
+  const showControls = () => {
+    setControlsVisible(true);
+    if (hideTimerRef.current) {
+      window.clearTimeout(hideTimerRef.current);
+    }
+
+    hideTimerRef.current = window.setTimeout(() => {
+      if (!videoRef.current?.paused) {
+        setControlsVisible(false);
+      }
+    }, 3200);
+  };
+
   return (
-    <section className="watch-screen">
-      <video ref={videoRef} className="video-player" controls autoPlay playsInline />
+    <section className={`watch-screen ${controlsVisible ? 'controls-visible' : 'controls-hidden'}`} onMouseMove={showControls} onClick={showControls}>
+      <video ref={videoRef} className="video-player" autoPlay playsInline onPlay={showControls} onPause={() => setControlsVisible(true)} />
       <PlayerControls info={info} video={video} />
     </section>
   );
