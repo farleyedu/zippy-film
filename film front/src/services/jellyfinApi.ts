@@ -121,6 +121,10 @@ function ticksToSeconds(ticks?: number) {
   return ticks ? Math.floor(ticks / 10_000_000) : 0;
 }
 
+function secondsToTicks(seconds: number) {
+  return Math.max(0, Math.floor(seconds)) * 10_000_000;
+}
+
 function progress(item: JellyfinItem) {
   if (typeof item.UserData?.PlayedPercentage === 'number') {
     return Math.round(item.UserData.PlayedPercentage);
@@ -424,6 +428,7 @@ export const jellyfinApi = {
       hlsUrl,
       directUrl,
       durationSeconds: ticksToSeconds(item.RunTimeTicks),
+      initialPositionSeconds: ticksToSeconds(item.UserData?.PlaybackPositionTicks),
       qualities: ['Auto'],
       audioTracks: ['Padrao'],
       subtitleTracks: ['Desligada'],
@@ -440,32 +445,92 @@ export const jellyfinApi = {
     };
   },
 
-  async reportStart(itemId: string) {
-    await jellyfinRequest('/Sessions/Playing', {
-      method: 'POST',
-      body: JSON.stringify({ ItemId: itemId, CanSeek: true })
-    }).catch(() => undefined);
+  async reportStart(itemId: string, currentTimeSeconds = 0) {
+    const positionTicks = secondsToTicks(currentTimeSeconds);
+    const query = new URLSearchParams({
+      CanSeek: 'true',
+      PlayMethod: 'DirectStream',
+      PositionTicks: String(positionTicks)
+    });
+
+    await Promise.allSettled([
+      jellyfinRequest('/Sessions/Playing', {
+        method: 'POST',
+        body: JSON.stringify({
+          ItemId: itemId,
+          CanSeek: true,
+          PlayMethod: 'DirectStream',
+          PositionTicks: positionTicks,
+          IsPaused: false
+        })
+      }),
+      jellyfinRequest(`/Users/${getUserId()}/PlayingItems/${itemId}?${query.toString()}`, {
+        method: 'POST'
+      })
+    ]).then((results) => {
+      results.forEach((result) => {
+        if (result.status === 'rejected') console.warn('Falha ao reportar inicio no Jellyfin', result.reason);
+      });
+    });
   },
 
   async saveProgress(itemId: string, currentTimeSeconds: number, isPaused = false) {
-    await jellyfinRequest('/Sessions/Playing/Progress', {
-      method: 'POST',
-      body: JSON.stringify({
-        ItemId: itemId,
-        PositionTicks: Math.max(0, currentTimeSeconds) * 10_000_000,
-        IsPaused: isPaused
+    const positionTicks = secondsToTicks(currentTimeSeconds);
+    const query = new URLSearchParams({
+      PositionTicks: String(positionTicks),
+      PlayMethod: 'DirectStream',
+      IsPaused: String(isPaused),
+      IsMuted: 'false'
+    });
+
+    await Promise.allSettled([
+      jellyfinRequest('/Sessions/Playing/Progress', {
+        method: 'POST',
+        keepalive: true,
+        body: JSON.stringify({
+          ItemId: itemId,
+          PositionTicks: positionTicks,
+          IsPaused: isPaused,
+          IsMuted: false,
+          PlayMethod: 'DirectStream'
+        })
+      }),
+      jellyfinRequest(`/Users/${getUserId()}/PlayingItems/${itemId}/Progress?${query.toString()}`, {
+        method: 'POST',
+        keepalive: true
       })
-    }).catch(() => undefined);
+    ]).then((results) => {
+      results.forEach((result) => {
+        if (result.status === 'rejected') console.warn('Falha ao salvar progresso no Jellyfin', result.reason);
+      });
+    });
   },
 
   async reportStopped(itemId: string, currentTimeSeconds: number) {
-    await jellyfinRequest('/Sessions/Playing/Stopped', {
-      method: 'POST',
-      body: JSON.stringify({
-        ItemId: itemId,
-        PositionTicks: Math.max(0, currentTimeSeconds) * 10_000_000
+    const positionTicks = secondsToTicks(currentTimeSeconds);
+    const query = new URLSearchParams({
+      PositionTicks: String(positionTicks),
+      PlayMethod: 'DirectStream'
+    });
+
+    await Promise.allSettled([
+      jellyfinRequest('/Sessions/Playing/Stopped', {
+        method: 'POST',
+        keepalive: true,
+        body: JSON.stringify({
+          ItemId: itemId,
+          PositionTicks: positionTicks
+        })
+      }),
+      jellyfinRequest(`/Users/${getUserId()}/PlayingItems/${itemId}?${query.toString()}`, {
+        method: 'DELETE',
+        keepalive: true
       })
-    }).catch(() => undefined);
+    ]).then((results) => {
+      results.forEach((result) => {
+        if (result.status === 'rejected') console.warn('Falha ao finalizar playback no Jellyfin', result.reason);
+      });
+    });
   },
 
   async setFavorite(itemId: string, favorite: boolean) {

@@ -16,11 +16,24 @@ export function Player({ info }: { info: PlaybackInfo }) {
     const element = videoRef.current;
     if (!element) return;
     setVideo(element);
+    let initialPositionApplied = false;
+
+    const applyInitialPosition = () => {
+      if (initialPositionApplied || !info.initialPositionSeconds || info.initialPositionSeconds < 5) return;
+      const duration = element.duration || info.durationSeconds || 0;
+      if (duration > 0 && info.initialPositionSeconds >= duration - 20) return;
+
+      element.currentTime = info.initialPositionSeconds;
+      initialPositionApplied = true;
+    };
 
     const player = new shaka.Player(element);
-    player.load(info.hlsUrl).catch(() => {
+    element.addEventListener('loadedmetadata', applyInitialPosition);
+
+    player.load(info.hlsUrl).then(applyInitialPosition).catch(() => {
       if (info.directUrl) {
         element.src = info.directUrl;
+        element.addEventListener('loadedmetadata', applyInitialPosition, { once: true });
         void element.play();
         return;
       }
@@ -40,9 +53,10 @@ export function Player({ info }: { info: PlaybackInfo }) {
 
     return () => {
       window.removeEventListener('keydown', handleKey);
+      element.removeEventListener('loadedmetadata', applyInitialPosition);
       void player.destroy();
     };
-  }, [info.directUrl, info.hlsUrl]);
+  }, [info.directUrl, info.durationSeconds, info.hlsUrl, info.initialPositionSeconds]);
 
   useEffect(() => {
     return () => {

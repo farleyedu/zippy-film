@@ -63,10 +63,10 @@ export const api = {
     return jellyfinApi.playback(playableItemId);
   },
 
-  reportStart: (playableItemId: string) => jellyfinApi.reportStart(playableItemId),
+  reportStart: (playableItemId: string, currentTimeSeconds = 0) => jellyfinApi.reportStart(playableItemId, currentTimeSeconds),
 
-  saveProgress: (playableItemId: string, _profileId: string, currentTimeSeconds: number) =>
-    jellyfinApi.saveProgress(playableItemId, currentTimeSeconds),
+  saveProgress: (playableItemId: string, _profileId: string, currentTimeSeconds: number, _durationSeconds?: number, isPaused = false) =>
+    jellyfinApi.saveProgress(playableItemId, currentTimeSeconds, isPaused),
 
   reportStopped: (playableItemId: string, currentTimeSeconds: number) =>
     jellyfinApi.reportStopped(playableItemId, currentTimeSeconds),

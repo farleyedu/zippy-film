@@ -16,6 +16,7 @@ export type PlaybackInfo = {
   hlsUrl: string;
   directUrl?: string;
   durationSeconds: number;
+  initialPositionSeconds?: number;
   qualities: string[];
   audioTracks: string[];
   subtitleTracks: string[];
