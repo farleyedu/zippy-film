@@ -1,12 +1,24 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties, PointerEvent } from 'react';
-import { Cast, ChevronLeft, ListVideo, MessageSquareText, Pause, Play, RotateCcw, SkipForward, Volume2, VolumeX } from 'lucide-react';
+import { Cast, ChevronLeft, ListVideo, Maximize, MessageSquareText, Pause, Play, RotateCcw, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { PlaybackInfo } from '../../types/playback';
 import { AudioMenu } from './AudioMenu';
 import { SubtitleMenu } from './SubtitleMenu';
 
-export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTMLVideoElement | null }) {
+type PlayerFitMode = 'contain' | 'cover';
+
+export function PlayerControls({
+  info,
+  video,
+  fitMode,
+  onToggleFitMode
+}: {
+  info: PlaybackInfo;
+  video: HTMLVideoElement | null;
+  fitMode: PlayerFitMode;
+  onToggleFitMode: () => void;
+}) {
   const navigate = useNavigate();
   const [paused, setPaused] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
@@ -121,7 +133,19 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
         <button className="player-plain-button" aria-label="Voltar" title="Voltar" onClick={() => navigate(-1)} tabIndex={0}>
           <ChevronLeft size={42} />
         </button>
-        <strong>{info.displayTitle ?? info.title}</strong>
+        <div className="player-title-stack">
+          {info.seriesTitle && <em>{info.seriesTitle}</em>}
+          <strong>{info.displayTitle ?? info.title}</strong>
+        </div>
+        <button
+          className={`player-plain-button fit-toggle-button ${fitMode === 'cover' ? 'active' : ''}`}
+          aria-label={fitMode === 'cover' ? 'Mostrar video inteiro' : 'Preencher tela'}
+          title={fitMode === 'cover' ? 'Mostrar video inteiro' : 'Preencher tela'}
+          onClick={onToggleFitMode}
+          tabIndex={0}
+        >
+          <Maximize size={34} />
+        </button>
         <button className="player-plain-button" aria-label="Transmitir" title="Transmitir" tabIndex={0}>
           <Cast size={36} />
         </button>
@@ -227,7 +251,7 @@ export function PlayerControls({ info, video }: { info: PlaybackInfo; video: HTM
               >
                 <span>S{episode.seasonNumber ?? 1}:E{episode.episodeNumber ?? 1}</span>
                 <strong>{episode.title}</strong>
-                <small>{episode.durationMinutes ? `${episode.durationMinutes} min` : ''}{episode.isPlayed ? ' • assistido' : ''}</small>
+                <small>{episode.durationMinutes ? `${episode.durationMinutes} min` : ''}{episode.isPlayed ? ' / assistido' : ''}</small>
                 {typeof episode.progress === 'number' && <i style={{ width: `${episode.progress}%` }} />}
               </button>
             ))}

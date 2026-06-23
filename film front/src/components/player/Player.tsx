@@ -9,6 +9,9 @@ export function Player({ info }: { info: PlaybackInfo }) {
   const hideTimerRef = useRef<number | null>(null);
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [fitMode, setFitMode] = useState<'contain' | 'cover'>(() => {
+    return localStorage.getItem('zippy.playerFitMode') === 'cover' ? 'cover' : 'contain';
+  });
   const profileId = localStorage.getItem('zippy.profileId') ?? 'profile-farley';
   usePlaybackProgress(info.playableItemId, profileId, video);
 
@@ -79,10 +82,18 @@ export function Player({ info }: { info: PlaybackInfo }) {
     }, 3200);
   };
 
+  const toggleFitMode = () => {
+    setFitMode((current) => {
+      const next = current === 'contain' ? 'cover' : 'contain';
+      localStorage.setItem('zippy.playerFitMode', next);
+      return next;
+    });
+  };
+
   return (
-    <section className={`watch-screen ${controlsVisible ? 'controls-visible' : 'controls-hidden'}`} onMouseMove={showControls} onClick={showControls}>
+    <section className={`watch-screen fit-${fitMode} ${controlsVisible ? 'controls-visible' : 'controls-hidden'}`} onMouseMove={showControls} onClick={showControls}>
       <video ref={videoRef} className="video-player" autoPlay playsInline onPlay={showControls} onPause={() => setControlsVisible(true)} />
-      <PlayerControls info={info} video={video} />
+      <PlayerControls info={info} video={video} fitMode={fitMode} onToggleFitMode={toggleFitMode} />
     </section>
   );
 }
