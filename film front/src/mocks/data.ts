@@ -104,9 +104,20 @@ export const mockPlayback = (playableItemId: string): PlaybackInfo => ({
   seriesTitle: playableItemId.startsWith('ep') ? 'Horizonte 12' : undefined,
   hlsUrl: '/media-stream/' + playableItemId + '/master.m3u8',
   durationSeconds: 7200,
-  qualities: ['Auto', '480p', '720p', '1080p', '4K'],
-  audioTracks: ['pt-BR', 'en-US'],
-  subtitleTracks: ['Desligada', 'pt-BR'],
+  qualities: [
+    { id: 'auto', label: 'Auto' },
+    { id: 'height-480', label: '480p', height: 480 },
+    { id: 'height-720', label: '720p', height: 720 },
+    { id: 'height-1080', label: '1080p', height: 1080 }
+  ],
+  audioTracks: [
+    { id: 'audio-pt-br', label: 'Portugues', language: 'pt-BR', isDefault: true },
+    { id: 'audio-en-us', label: 'Ingles', language: 'en-US' }
+  ],
+  subtitleTracks: [
+    { id: 'off', label: 'Desligada' },
+    { id: 'sub-pt-br', label: 'Portugues', language: 'pt-BR' }
+  ],
   episodes: mockMedia.find((item) => item.id === 's1')?.seasons?.[0].episodes.map((episode) => ({
     id: episode.playableItemId,
     title: episode.title,

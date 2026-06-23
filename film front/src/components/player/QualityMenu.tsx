@@ -1,3 +1,17 @@
-export function QualityMenu({ qualities }: { qualities: string[] }) {
-  return <select aria-label="Qualidade" tabIndex={0}>{qualities.map((quality) => <option key={quality}>{quality}</option>)}</select>;
+import type { PlaybackQualityOption } from '../../types/playback';
+
+export function QualityMenu({
+  qualities,
+  value,
+  onChange
+}: {
+  qualities: PlaybackQualityOption[];
+  value: string;
+  onChange: (qualityId: string) => void;
+}) {
+  return (
+    <select aria-label="Qualidade" value={value} onChange={(event) => onChange(event.target.value)} tabIndex={0}>
+      {qualities.map((quality) => <option key={quality.id} value={quality.id}>{quality.label}</option>)}
+    </select>
+  );
 }

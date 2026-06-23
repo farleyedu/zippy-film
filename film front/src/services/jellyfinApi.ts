@@ -1,5 +1,5 @@
 import type { HomeResponse, Media, Episode, Season } from '../types/media';
-import type { PlaybackInfo } from '../types/playback';
+import type { PlaybackInfo, PlaybackQualityOption, PlaybackTrackOption } from '../types/playback';
 import type { AuthResponse, Profile, User } from '../types/user';
 
 const APP_NAME = 'Zippy';
@@ -45,6 +45,7 @@ type JellyfinItem = {
     Logo?: string;
   };
   BackdropImageTags?: string[];
+  MediaSources?: JellyfinMediaSource[];
   UserData?: {
     PlaybackPositionTicks?: number;
     PlayCount?: number;
@@ -52,6 +53,27 @@ type JellyfinItem = {
     IsFavorite?: boolean;
     PlayedPercentage?: number;
   };
+};
+
+type JellyfinMediaSource = {
+  Bitrate?: number;
+  MediaStreams?: JellyfinMediaStream[];
+};
+
+type JellyfinMediaStream = {
+  Index?: number;
+  Type?: 'Video' | 'Audio' | 'Subtitle' | string;
+  Codec?: string;
+  Language?: string;
+  DisplayTitle?: string;
+  Title?: string;
+  Width?: number;
+  Height?: number;
+  BitRate?: number;
+  Channels?: number;
+  IsDefault?: boolean;
+  IsForced?: boolean;
+  IsExternal?: boolean;
 };
 
 type JellyfinItemsResponse = {
@@ -138,6 +160,64 @@ function progress(item: JellyfinItem) {
   const runtime = ticksToSeconds(item.RunTimeTicks);
   const watched = ticksToSeconds(item.UserData?.PlaybackPositionTicks);
   return runtime > 0 && watched > 0 ? Math.min(100, Math.round((watched / runtime) * 100)) : undefined;
+}
+
+function streamLabel(stream: JellyfinMediaStream, fallback: string) {
+  const parts = [
+    stream.DisplayTitle || stream.Title || stream.Language || fallback,
+    stream.Codec?.toUpperCase(),
+    stream.Channels ? `${stream.Channels} canais` : undefined,
+    stream.IsForced ? 'forcada' : undefined,
+    stream.IsDefault ? 'padrao' : undefined
+  ].filter(Boolean);
+
+  return parts.join(' / ');
+}
+
+function playbackTracks(item: JellyfinItem, type: 'Audio' | 'Subtitle'): PlaybackTrackOption[] {
+  const streams = item.MediaSources?.flatMap((source) => source.MediaStreams ?? []) ?? [];
+  const tracks = streams
+    .filter((stream) => stream.Type === type)
+    .map((stream, index) => ({
+      id: `${type.toLowerCase()}-${stream.Index ?? index}`,
+      label: streamLabel(stream, type === 'Audio' ? `Audio ${index + 1}` : `Legenda ${index + 1}`),
+      language: stream.Language,
+      index: stream.Index,
+      codec: stream.Codec,
+      channels: stream.Channels,
+      isDefault: stream.IsDefault,
+      isForced: stream.IsForced
+    }));
+
+  if (type === 'Subtitle') {
+    return [{ id: 'off', label: 'Desligada' }, ...tracks];
+  }
+
+  return tracks.length ? tracks : [{ id: 'audio-default', label: 'Padrao' }];
+}
+
+function playbackQualities(item: JellyfinItem): PlaybackQualityOption[] {
+  const streams = item.MediaSources?.flatMap((source) => source.MediaStreams ?? []) ?? [];
+  const videoStreams = streams.filter((stream) => stream.Type === 'Video');
+  const byHeight = new Map<number, JellyfinMediaStream>();
+  videoStreams.forEach((stream) => {
+    if (!stream.Height) return;
+    const current = byHeight.get(stream.Height);
+    if (!current || (stream.BitRate ?? 0) > (current.BitRate ?? 0)) {
+      byHeight.set(stream.Height, stream);
+    }
+  });
+
+  const qualities = Array.from(byHeight.values())
+    .sort((a, b) => (a.Height ?? 0) - (b.Height ?? 0))
+    .map((stream) => ({
+      id: `height-${stream.Height}`,
+      label: `${stream.Height}p`,
+      height: stream.Height,
+      bitrate: stream.BitRate
+    }));
+
+  return [{ id: 'auto', label: 'Auto' }, ...qualities];
 }
 
 function imageUrl(itemId: string, type: 'Primary' | 'Backdrop', width: number, height?: number) {
@@ -420,7 +500,7 @@ export const jellyfinApi = {
   },
 
   async playback(itemId: string): Promise<PlaybackInfo> {
-    const item = await jellyfinRequest<JellyfinItem>(`/Users/${getUserId()}/Items/${itemId}`);
+    const item = await jellyfinRequest<JellyfinItem>(`/Users/${getUserId()}/Items/${itemId}?Fields=MediaSources,MediaStreams,Overview,Genres,UserData,RunTimeTicks,ProductionYear,CommunityRating,OfficialRating`);
     const token = getToken();
     const serverUrl = getServerUrl();
     const hlsUrl = `${serverUrl}/Videos/${itemId}/master.m3u8?api_key=${encodeURIComponent(token)}`;
@@ -443,9 +523,9 @@ export const jellyfinApi = {
       directUrl,
       durationSeconds: ticksToSeconds(item.RunTimeTicks),
       initialPositionSeconds: ticksToSeconds(item.UserData?.PlaybackPositionTicks),
-      qualities: ['Auto'],
-      audioTracks: ['Padrao'],
-      subtitleTracks: ['Desligada'],
+      qualities: playbackQualities(item),
+      audioTracks: playbackTracks(item, 'Audio'),
+      subtitleTracks: playbackTracks(item, 'Subtitle'),
       episodes: episodes.map((episode) => ({
         id: episode.Id,
         title: episode.Name,

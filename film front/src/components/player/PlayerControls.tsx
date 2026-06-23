@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties, PointerEvent } from 'react';
-import { Cast, ChevronLeft, ListVideo, Maximize, MessageSquareText, Pause, Play, RotateCcw, SkipForward, Volume2, VolumeX } from 'lucide-react';
+import { Cast, ChevronLeft, ListVideo, Lock, Maximize, MessageSquareText, Pause, Play, RotateCcw, SkipForward, Unlock, Volume2, VolumeX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { PlaybackInfo } from '../../types/playback';
+import type { PlaybackInfo, PlaybackQualityOption } from '../../types/playback';
 import { AudioMenu } from './AudioMenu';
 import { SubtitleMenu } from './SubtitleMenu';
 
@@ -12,12 +12,42 @@ export function PlayerControls({
   info,
   video,
   fitMode,
-  onToggleFitMode
+  onToggleFitMode,
+  controlsLocked,
+  onToggleControlsLock,
+  onRestart,
+  qualityOptions,
+  selectedQualityId,
+  onQualityChange,
+  selectedAudioTrackId,
+  onAudioTrackChange,
+  selectedSubtitleTrackId,
+  onSubtitleTrackChange,
+  playbackRate,
+  onPlaybackRateChange,
+  nextCountdown,
+  onCancelNextEpisode,
+  onPlayNextEpisode
 }: {
   info: PlaybackInfo;
   video: HTMLVideoElement | null;
   fitMode: PlayerFitMode;
   onToggleFitMode: () => void;
+  controlsLocked: boolean;
+  onToggleControlsLock: () => void;
+  onRestart: () => void;
+  qualityOptions: PlaybackQualityOption[];
+  selectedQualityId: string;
+  onQualityChange: (qualityId: string) => void;
+  selectedAudioTrackId: string;
+  onAudioTrackChange: (trackId: string) => void;
+  selectedSubtitleTrackId: string;
+  onSubtitleTrackChange: (trackId: string) => void;
+  playbackRate: number;
+  onPlaybackRateChange: (rate: number) => void;
+  nextCountdown: number | null;
+  onCancelNextEpisode: () => void;
+  onPlayNextEpisode: () => void;
 }) {
   const navigate = useNavigate();
   const [paused, setPaused] = useState(true);
@@ -29,6 +59,7 @@ export function PlayerControls({
   const [audioPanelOpen, setAudioPanelOpen] = useState(false);
   const [volumeOpen, setVolumeOpen] = useState(false);
   const [volumeDragging, setVolumeDragging] = useState(false);
+  const [timelinePreview, setTimelinePreview] = useState<{ x: number; time: number } | null>(null);
 
   useEffect(() => {
     if (!video) return;
@@ -126,6 +157,16 @@ export function PlayerControls({
 
   const episodes = info.episodes ?? [];
   const isSeries = episodes.length > 0;
+  const speedOptions = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+  const updateTimelinePreview = (event: PointerEvent<HTMLInputElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    setTimelinePreview({
+      x: ratio * rect.width,
+      time: ratio * duration
+    });
+  };
 
   return (
     <div className="player-controls player-compact">
@@ -145,6 +186,15 @@ export function PlayerControls({
           tabIndex={0}
         >
           <Maximize size={34} />
+        </button>
+        <button
+          className={`player-plain-button lock-toggle-button ${controlsLocked ? 'active' : ''}`}
+          aria-label={controlsLocked ? 'Destravar controles' : 'Travar controles'}
+          title={controlsLocked ? 'Destravar controles' : 'Travar controles'}
+          onClick={onToggleControlsLock}
+          tabIndex={0}
+        >
+          {controlsLocked ? <Lock size={32} /> : <Unlock size={32} />}
         </button>
         <button className="player-plain-button" aria-label="Transmitir" title="Transmitir" tabIndex={0}>
           <Cast size={36} />
@@ -199,6 +249,7 @@ export function PlayerControls({
 
       <div className="player-mobile-bottom">
         <div className="mobile-progress-row">
+          {timelinePreview && <b className="timeline-preview" style={{ left: `${timelinePreview.x}px` }}>{formatTime(timelinePreview.time)}</b>}
           <input
             aria-label="Progresso"
             type="range"
@@ -207,12 +258,18 @@ export function PlayerControls({
             value={Math.min(currentTime, Math.max(1, duration))}
             style={progressStyle}
             onChange={(event) => setProgress(event.target.value)}
+            onPointerMove={updateTimelinePreview}
+            onPointerLeave={() => setTimelinePreview(null)}
             tabIndex={0}
           />
           <span>{formatTime(duration)}</span>
         </div>
 
         <div className="mobile-action-row">
+          <button onClick={onRestart} tabIndex={0}>
+            <RotateCcw size={32} />
+            <span>Recomecar</span>
+          </button>
           <button disabled={!isSeries} onClick={() => setEpisodePanelOpen(true)} tabIndex={0}>
             <ListVideo size={34} />
             <span>Episodes</span>
@@ -230,8 +287,30 @@ export function PlayerControls({
 
       {audioPanelOpen && (
         <div className="audio-subtitle-popover">
-          <label>Audio<AudioMenu tracks={info.audioTracks} /></label>
-          <label>Legenda<SubtitleMenu tracks={info.subtitleTracks.length ? info.subtitleTracks : ['Desligada']} /></label>
+          <label>
+            Qualidade
+            <select aria-label="Qualidade" value={selectedQualityId} onChange={(event) => onQualityChange(event.target.value)} tabIndex={0}>
+              {qualityOptions.map((quality) => <option key={quality.id} value={quality.id}>{quality.label}</option>)}
+            </select>
+          </label>
+          <label>
+            Velocidade
+            <select aria-label="Velocidade" value={playbackRate} onChange={(event) => onPlaybackRateChange(Number(event.target.value))} tabIndex={0}>
+              {speedOptions.map((speed) => <option key={speed} value={speed}>{speed === 1 ? 'Normal' : `${speed}x`}</option>)}
+            </select>
+          </label>
+          <label>Audio<AudioMenu tracks={info.audioTracks} value={selectedAudioTrackId} onChange={onAudioTrackChange} /></label>
+          <label>Legenda<SubtitleMenu tracks={info.subtitleTracks} value={selectedSubtitleTrackId} onChange={onSubtitleTrackChange} /></label>
+        </div>
+      )}
+
+      {nextCountdown !== null && (
+        <div className="next-episode-overlay">
+          <strong>Proximo episodio em {nextCountdown}</strong>
+          <div>
+            <button onClick={onPlayNextEpisode} tabIndex={0}>Assistir agora</button>
+            <button className="secondary" onClick={onCancelNextEpisode} tabIndex={0}>Cancelar</button>
+          </div>
         </div>
       )}
 

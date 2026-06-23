@@ -8,6 +8,24 @@ export type PlaybackEpisode = {
   isPlayed?: boolean;
 };
 
+export type PlaybackTrackOption = {
+  id: string;
+  label: string;
+  language?: string;
+  index?: number;
+  codec?: string;
+  channels?: number;
+  isDefault?: boolean;
+  isForced?: boolean;
+};
+
+export type PlaybackQualityOption = {
+  id: string;
+  label: string;
+  height?: number;
+  bitrate?: number;
+};
+
 export type PlaybackInfo = {
   playableItemId: string;
   title: string;
@@ -17,9 +35,9 @@ export type PlaybackInfo = {
   directUrl?: string;
   durationSeconds: number;
   initialPositionSeconds?: number;
-  qualities: string[];
-  audioTracks: string[];
-  subtitleTracks: string[];
+  qualities: PlaybackQualityOption[];
+  audioTracks: PlaybackTrackOption[];
+  subtitleTracks: PlaybackTrackOption[];
   episodes?: PlaybackEpisode[];
   nextEpisodeId?: string;
 };
