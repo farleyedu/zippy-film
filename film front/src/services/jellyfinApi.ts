@@ -114,6 +114,11 @@ async function jellyfinRequest<T>(path: string, options: RequestInit = {}): Prom
     return undefined as T;
   }
 
+  const contentType = response.headers.get('Content-Type') ?? '';
+  if (!contentType.includes('application/json')) {
+    return undefined as T;
+  }
+
   return (await response.json()) as T;
 }
 

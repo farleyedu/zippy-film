@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { api } from '../services/api';
+import { clearStoredPlaybackProgress, saveStoredPlaybackProgress } from '../services/playbackProgressStore';
 
 export function usePlaybackProgress(playableItemId: string | undefined, profileId: string | undefined, video: HTMLVideoElement | null) {
   useEffect(() => {
@@ -11,25 +12,42 @@ export function usePlaybackProgress(playableItemId: string | undefined, profileI
     const duration = () => Math.floor(video.duration || 0);
     const save = (isPaused = video.paused) => {
       if (current() <= 0) return Promise.resolve();
+      saveStoredPlaybackProgress(playableItemId, current(), duration());
       return api.saveProgress(playableItemId, profileId, current(), duration(), isPaused);
     };
-    const stop = () => api.reportStopped(playableItemId, Math.floor(video.currentTime));
+    const stop = () => {
+      const position = current();
+      const total = duration();
+      if (total > 0 && position >= total - 20) {
+        clearStoredPlaybackProgress(playableItemId);
+      } else {
+        saveStoredPlaybackProgress(playableItemId, position, total);
+      }
+
+      return save(true).finally(() => api.reportStopped(playableItemId, position));
+    };
     const start = () => {
       void api.reportStart(playableItemId, current());
     };
     const interval = window.setInterval(() => {
       if (!video.paused && current() > 0) void save(false);
-    }, 5000);
+    }, 3000);
     const onPause = () => void save(true);
     const onSeeked = () => void save(video.paused);
     const onEnded = () => void stop();
-    const onBeforeUnload = () => void stop();
+    const onPageHidden = () => {
+      if (document.visibilityState === 'hidden' && current() > 0) void stop();
+    };
+    const onPageHide = () => {
+      if (current() > 0) void stop();
+    };
 
     video.addEventListener('play', start);
     video.addEventListener('pause', onPause);
     video.addEventListener('seeked', onSeeked);
     video.addEventListener('ended', onEnded);
-    window.addEventListener('beforeunload', onBeforeUnload);
+    document.addEventListener('visibilitychange', onPageHidden);
+    window.addEventListener('pagehide', onPageHide);
 
     return () => {
       window.clearInterval(interval);
@@ -38,7 +56,8 @@ export function usePlaybackProgress(playableItemId: string | undefined, profileI
       video.removeEventListener('pause', onPause);
       video.removeEventListener('seeked', onSeeked);
       video.removeEventListener('ended', onEnded);
-      window.removeEventListener('beforeunload', onBeforeUnload);
+      document.removeEventListener('visibilitychange', onPageHidden);
+      window.removeEventListener('pagehide', onPageHide);
     };
   }, [playableItemId, profileId, video]);
 }

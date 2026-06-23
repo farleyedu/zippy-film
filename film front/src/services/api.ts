@@ -3,6 +3,7 @@ import type { HomeResponse, Media } from '../types/media';
 import type { PlaybackInfo } from '../types/playback';
 import { mockHome, mockMedia, mockPlayback, mockProfiles } from '../mocks/data';
 import { jellyfinApi } from './jellyfinApi';
+import { getStoredPlaybackProgress } from './playbackProgressStore';
 
 function useMocks() {
   return !jellyfinApi.isConfigured();
@@ -59,17 +60,28 @@ export const api = {
   },
 
   playback: async (playableItemId: string): Promise<PlaybackInfo> => {
-    if (useMocks()) return mockPlayback(playableItemId);
-    return jellyfinApi.playback(playableItemId);
+    const info = useMocks() ? mockPlayback(playableItemId) : await jellyfinApi.playback(playableItemId);
+    const stored = getStoredPlaybackProgress(playableItemId);
+    if (!stored) return info;
+
+    const serverPosition = info.initialPositionSeconds ?? 0;
+    const duration = info.durationSeconds || stored.durationSeconds;
+    const canResumeStoredPosition = !duration || stored.positionSeconds < duration - 20;
+    if (canResumeStoredPosition && stored.positionSeconds > serverPosition) {
+      return { ...info, initialPositionSeconds: stored.positionSeconds };
+    }
+
+    return info;
   },
 
-  reportStart: (playableItemId: string, currentTimeSeconds = 0) => jellyfinApi.reportStart(playableItemId, currentTimeSeconds),
+  reportStart: (playableItemId: string, currentTimeSeconds = 0) =>
+    useMocks() ? Promise.resolve() : jellyfinApi.reportStart(playableItemId, currentTimeSeconds),
 
   saveProgress: (playableItemId: string, _profileId: string, currentTimeSeconds: number, _durationSeconds?: number, isPaused = false) =>
-    jellyfinApi.saveProgress(playableItemId, currentTimeSeconds, isPaused),
+    useMocks() ? Promise.resolve() : jellyfinApi.saveProgress(playableItemId, currentTimeSeconds, isPaused),
 
   reportStopped: (playableItemId: string, currentTimeSeconds: number) =>
-    jellyfinApi.reportStopped(playableItemId, currentTimeSeconds),
+    useMocks() ? Promise.resolve() : jellyfinApi.reportStopped(playableItemId, currentTimeSeconds),
 
   lists: async (): Promise<Media[]> => {
     if (useMocks()) return mockMedia.slice(1, 4);
