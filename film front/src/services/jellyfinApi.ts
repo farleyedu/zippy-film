@@ -358,6 +358,15 @@ export const jellyfinApi = {
     return mapMedia(item);
   },
 
+  itemsByIds(ids: string[]) {
+    if (!ids.length) return Promise.resolve([]);
+
+    return getItems({
+      Ids: ids.join(','),
+      Fields: 'PrimaryImageAspectRatio,Overview,Genres,UserData,RunTimeTicks,ProductionYear,CommunityRating,OfficialRating,ChildCount'
+    });
+  },
+
   async seriesDetail(id: string): Promise<Media> {
     const media = await this.item(id);
     const seasonsData = await jellyfinRequest<JellyfinItemsResponse>(`/Shows/${id}/Seasons?UserId=${getUserId()}&Fields=PrimaryImageAspectRatio,Overview,UserData,RunTimeTicks`);

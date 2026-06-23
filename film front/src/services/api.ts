@@ -3,10 +3,56 @@ import type { HomeResponse, Media } from '../types/media';
 import type { PlaybackInfo } from '../types/playback';
 import { mockHome, mockMedia, mockPlayback, mockProfiles } from '../mocks/data';
 import { jellyfinApi } from './jellyfinApi';
-import { getStoredPlaybackProgress } from './playbackProgressStore';
+import { getStoredPlaybackProgress, listStoredPlaybackProgress } from './playbackProgressStore';
 
 function useMocks() {
   return !jellyfinApi.isConfigured();
+}
+
+function mediaPlaybackKey(media: Media) {
+  return media.playableItemId ?? media.id;
+}
+
+function progressPercent(positionSeconds: number, durationSeconds: number) {
+  if (durationSeconds <= 0) return undefined;
+  return Math.max(1, Math.min(99, Math.round((positionSeconds / durationSeconds) * 100)));
+}
+
+function mergeContinueItems(serverItems: Media[], localItems: Media[]) {
+  const seen = new Set<string>();
+  return [...localItems, ...serverItems].filter((item) => {
+    const key = mediaPlaybackKey(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function localContinueItems() {
+  const stored = listStoredPlaybackProgress();
+  if (!stored.length) return [];
+
+  const byId = new Map(stored.map((entry) => [entry.itemId, entry]));
+  const media = useMocks()
+    ? mockMedia.filter((item) => byId.has(mediaPlaybackKey(item)))
+    : await jellyfinApi.itemsByIds(stored.map((entry) => entry.itemId)).catch(() => []);
+
+  return media
+    .map((item) => {
+      const entry = byId.get(mediaPlaybackKey(item)) ?? byId.get(item.id);
+      if (!entry) return item;
+
+      return {
+        ...item,
+        playableItemId: item.playableItemId ?? item.id,
+        progress: progressPercent(entry.positionSeconds, entry.durationSeconds) ?? item.progress
+      };
+    })
+    .sort((a, b) => {
+      const first = byId.get(mediaPlaybackKey(a))?.updatedAt ?? 0;
+      const second = byId.get(mediaPlaybackKey(b))?.updatedAt ?? 0;
+      return second - first;
+    });
 }
 
 export const api = {
@@ -31,7 +77,19 @@ export const api = {
 
   home: async (): Promise<HomeResponse> => {
     if (useMocks()) return mockHome;
-    return jellyfinApi.home();
+    const home = await jellyfinApi.home();
+    const localResume = await localContinueItems();
+    if (!localResume.length) return home;
+
+    const rows = home.rows.filter((row) => row.title !== 'Continuar assistindo');
+    const serverResume = home.rows.find((row) => row.title === 'Continuar assistindo')?.items ?? [];
+    const resume = mergeContinueItems(serverResume, localResume);
+
+    return {
+      ...home,
+      hero: home.hero ?? resume[0] ?? null,
+      rows: resume.length ? [{ title: 'Continuar assistindo', items: resume }, ...rows] : rows
+    };
   },
 
   movies: async (): Promise<Media[]> => {
@@ -94,8 +152,11 @@ export const api = {
   },
 
   continueWatching: async (): Promise<Media[]> => {
-    if (useMocks()) return mockMedia.filter((item) => item.progress);
-    return jellyfinApi.continueWatching();
+    const serverItems = useMocks()
+      ? mockMedia.filter((item) => item.progress)
+      : await jellyfinApi.continueWatching().catch(() => []);
+    const localItems = await localContinueItems();
+    return mergeContinueItems(serverItems, localItems);
   },
 
   history: async (): Promise<Media[]> => {

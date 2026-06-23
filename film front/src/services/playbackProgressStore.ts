@@ -1,13 +1,13 @@
 const STORAGE_KEY = 'zippy.playbackProgress.v1';
 const RESUME_MARGIN_SECONDS = 20;
 
-type StoredProgress = {
+export type StoredPlaybackProgress = {
   positionSeconds: number;
   durationSeconds: number;
   updatedAt: number;
 };
 
-type ProgressMap = Record<string, StoredProgress>;
+type ProgressMap = Record<string, StoredPlaybackProgress>;
 
 function readMap(): ProgressMap {
   try {
@@ -28,6 +28,15 @@ export function getStoredPlaybackProgress(itemId: string | undefined) {
 
   const isFinished = entry.durationSeconds > 0 && entry.positionSeconds >= entry.durationSeconds - RESUME_MARGIN_SECONDS;
   return isFinished ? undefined : entry;
+}
+
+export function listStoredPlaybackProgress() {
+  return Object.entries(readMap())
+    .map(([itemId, progress]) => ({ itemId, ...progress }))
+    .filter((entry) => {
+      return !entry.durationSeconds || entry.positionSeconds < entry.durationSeconds - RESUME_MARGIN_SECONDS;
+    })
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export function saveStoredPlaybackProgress(itemId: string | undefined, positionSeconds: number, durationSeconds: number) {
