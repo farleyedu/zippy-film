@@ -1,6 +1,7 @@
-import { Play, Plus, RotateCcw } from 'lucide-react';
+import { Play, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { FavoriteButton } from '../../components/actions/FavoriteButton';
 import { AppShell } from '../../components/layout/AppShell';
 import { api } from '../../services/api';
 import type { Media } from '../../types/media';
@@ -26,7 +27,7 @@ export function MovieDetail() {
           <div className="hero-actions">
             <button onClick={() => navigate(`/watch/${media.playableItemId ?? media.id}`)} tabIndex={0}><Play />Assistir</button>
             <button className="secondary" tabIndex={0}><RotateCcw />Recomecar</button>
-            <button className="secondary" onClick={() => api.addList(localStorage.getItem('zippy.profileId') ?? '', media.id, 'FAVORITE')} tabIndex={0}><Plus />Favorito</button>
+            <FavoriteButton mediaId={media.id} isFavorite={media.isFavorite} variant="pill" onChanged={(isFavorite) => setMedia({ ...media, isFavorite })} />
             <button className="secondary" tabIndex={0}>Assistir mais tarde</button>
           </div>
         </div>

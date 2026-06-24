@@ -16,7 +16,15 @@ export function MyList() {
       <section className="catalog-page">
         <h1>Minha lista</h1>
         {items.length ? (
-          <ContentRow title="Favoritos do Jellyfin" items={items} />
+          <ContentRow
+            title="Favoritos do Jellyfin"
+            items={items}
+            onFavoriteChanged={(mediaId, favorite) => {
+              if (!favorite) {
+                setItems((current) => current.filter((item) => item.id !== mediaId));
+              }
+            }}
+          />
         ) : (
           <div className="empty-feature-state">
             <strong>Sua lista ainda esta vazia</strong>

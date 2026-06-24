@@ -169,6 +169,9 @@ export const api = {
     return jellyfinApi.setFavorite(mediaId, listType !== 'DISLIKED');
   },
 
+  setFavorite: (mediaId: string, favorite: boolean) =>
+    useMocks() ? Promise.resolve() : jellyfinApi.setFavorite(mediaId, favorite),
+
   settings: async () => jellyfinApi.getSession(),
 
   saveSettings: async () => undefined

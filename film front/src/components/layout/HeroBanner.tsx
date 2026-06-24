@@ -1,10 +1,17 @@
-import { Info, ListPlus, Play } from 'lucide-react';
+import { Info, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../../services/api';
+import { useEffect, useState } from 'react';
+import { FavoriteButton } from '../actions/FavoriteButton';
 import type { Media } from '../../types/media';
 
 export function HeroBanner({ media }: { media: Media | null }) {
   const navigate = useNavigate();
+  const [favorite, setFavorite] = useState(false);
+
+  useEffect(() => {
+    setFavorite(Boolean(media?.isFavorite));
+  }, [media?.id, media?.isFavorite]);
+
   if (!media) {
     return <section className="hero empty-hero" />;
   }
@@ -24,7 +31,7 @@ export function HeroBanner({ media }: { media: Media | null }) {
         <div className="hero-actions">
           <button onClick={() => navigate(`/watch/${media.playableItemId ?? media.id}`)} tabIndex={0}><Play size={26} fill="currentColor" />Assistir</button>
           <button className="secondary" onClick={() => navigate(detailPath)} tabIndex={0}><Info size={26} />Mais informacoes</button>
-          <button className="icon-only" title="Minha lista" onClick={() => api.addList(localStorage.getItem('zippy.profileId') ?? '', media.id, 'FAVORITE')} tabIndex={0}><ListPlus size={28} /></button>
+          <FavoriteButton mediaId={media.id} isFavorite={favorite} variant="pill" onChanged={setFavorite} />
         </div>
       </div>
     </section>
